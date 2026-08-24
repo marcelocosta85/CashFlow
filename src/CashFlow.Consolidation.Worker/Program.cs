@@ -45,3 +45,9 @@ app.UseSwaggerUI();
 app.MapControllers();
 
 app.Run();
+
+// Marcador público exigido pelo WebApplicationFactory<Program> dos testes de integração —
+// a classe Program gerada implicitamente para top-level statements é internal por padrão.
+public partial class Program
+{
+}

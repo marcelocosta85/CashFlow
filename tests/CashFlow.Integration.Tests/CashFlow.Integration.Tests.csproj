@@ -12,8 +12,13 @@
     <PackageReference Include="coverlet.collector" Version="10.0.1" />
     <PackageReference Include="FluentAssertions" Version="8.10.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <!-- Fixa a versão para unificar com a exigida por Microsoft.EntityFrameworkCore.Design (10.0.11)
+         referenciado pelos dois hosts — sem isso, o transitivo trazido por
+         Npgsql.EntityFrameworkCore.PostgreSQL (10.0.4) gera conflito de versão não resolvido (MSB3277). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageReference Include="NSubstitute" Version="6.2.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.14.0" />
     <PackageReference Include="Testcontainers.RabbitMq" Version="4.14.0" />
     <PackageReference Include="xunit.v3" Version="4.0.0" />
@@ -26,7 +31,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CashFlow.Launches.Api\CashFlow.Launches.Api.csproj" />
-    <ProjectReference Include="..\..\src\CashFlow.Consolidation.Worker\CashFlow.Consolidation.Worker.csproj" />
+    <!-- Aliased: ambos os hosts geram uma classe "Program" no namespace global a partir de top-level
+         statements. O alias evita a ambiguidade ao referenciar os dois no mesmo projeto de teste. -->
+    <ProjectReference Include="..\..\src\CashFlow.Consolidation.Worker\CashFlow.Consolidation.Worker.csproj" Aliases="WorkerHost" />
   </ItemGroup>
 
 </Project>
