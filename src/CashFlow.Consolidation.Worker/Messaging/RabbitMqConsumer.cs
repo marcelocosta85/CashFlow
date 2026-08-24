@@ -1,7 +1,8 @@
 using System.Text.Json;
-using CashFlow.Application.Abstractions;
+using CashFlow.Application.Consolidacao.Commands;
 using CashFlow.Domain.Eventos;
 using CashFlow.Infrastructure.Messaging;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -82,10 +83,10 @@ public class RabbitMqConsumer : BackgroundService
                     ?? throw new InvalidOperationException("Mensagem inválida: não foi possível desserializar o evento LancamentoRegistradoEvent.");
 
                 using var scope = _scopeFactory.CreateScope();
-                var saldoDiarioRepositorio = scope.ServiceProvider.GetRequiredService<ISaldoDiarioRepositorio>();
+                var sender = scope.ServiceProvider.GetRequiredService<ISender>();
 
-                var aplicado = await saldoDiarioRepositorio.AplicarLancamentoAsync(
-                    evento.LancamentoId, evento.Tipo, evento.Valor, evento.Data, ct);
+                var comando = new ConsolidarLancamentoCommand(evento.LancamentoId, evento.Tipo, evento.Valor, evento.Data);
+                var aplicado = await sender.Send(comando, ct);
 
                 if (!aplicado)
                     _logger.LogInformation("Lançamento {LancamentoId} já havia sido processado — mensagem duplicada ignorada.", evento.LancamentoId);

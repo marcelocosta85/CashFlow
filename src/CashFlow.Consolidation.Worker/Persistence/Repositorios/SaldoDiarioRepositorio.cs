@@ -1,6 +1,5 @@
 using CashFlow.Application.Abstractions;
 using CashFlow.Domain.Entidades;
-using CashFlow.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace CashFlow.Consolidation.Worker.Persistence.Repositorios;
@@ -19,30 +18,22 @@ public class SaldoDiarioRepositorio : ISaldoDiarioRepositorio
         return _dbContext.SaldosDiarios.FirstOrDefaultAsync(s => s.Data == data.Date, cancellationToken);
     }
 
-    public async Task<bool> AplicarLancamentoAsync(Guid lancamentoId, TipoLancamento tipo, decimal valor, DateTime data, CancellationToken cancellationToken)
+    public Task<bool> LancamentoJaProcessadoAsync(Guid lancamentoId, CancellationToken cancellationToken)
     {
-        await using var transacao = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        return _dbContext.LancamentosProcessados.AnyAsync(l => l.LancamentoId == lancamentoId, cancellationToken);
+    }
 
-        var jaProcessado = await _dbContext.LancamentosProcessados
-            .AnyAsync(l => l.LancamentoId == lancamentoId, cancellationToken);
-
-        if (jaProcessado)
-            return false;
-
-        var saldoDiario = await ObterPorDataAsync(data, cancellationToken);
-
-        if (saldoDiario is null)
-        {
-            saldoDiario = new SaldoDiario(data);
+    public async Task RegistrarConsolidacaoAsync(SaldoDiario saldoDiario, Guid lancamentoId, CancellationToken cancellationToken)
+    {
+        // A restrição de chave primária em lancamentos_processados.LancamentoId é a garantia real de
+        // atomicidade contra processamento concorrente da mesma mensagem: SaveChangesAsync já roda em
+        // uma transação implícita do EF Core, e uma segunda inserção concorrente para o mesmo Id falha
+        // aqui (violação de PK), não na checagem de idempotência feita antes pelo handler.
+        if (_dbContext.Entry(saldoDiario).State == EntityState.Detached)
             _dbContext.SaldosDiarios.Add(saldoDiario);
-        }
 
-        saldoDiario.AplicarLancamento(tipo, valor);
         _dbContext.LancamentosProcessados.Add(new LancamentoProcessado(lancamentoId));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        await transacao.CommitAsync(cancellationToken);
-
-        return true;
     }
 }

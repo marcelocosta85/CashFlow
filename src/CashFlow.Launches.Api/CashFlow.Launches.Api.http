@@ -1,6 +1,67 @@
 @CashFlow.Launches.Api_HostAddress = http://localhost:5226
+@CashFlow.Consolidation.Worker_HostAddress = http://localhost:5227
 
-GET {{CashFlow.Launches.Api_HostAddress}}/weatherforecast/
+### Registrar um crédito
+POST {{CashFlow.Launches.Api_HostAddress}}/lancamentos
+Content-Type: application/json
+
+{
+  "tipo": "Credito",
+  "valor": 250.50,
+  "data": "2026-08-24",
+  "descricao": "Venda balcão"
+}
+
+###
+
+### Registrar um débito
+POST {{CashFlow.Launches.Api_HostAddress}}/lancamentos
+Content-Type: application/json
+
+{
+  "tipo": "Debito",
+  "valor": 80.00,
+  "data": "2026-08-24",
+  "descricao": "Compra de insumos"
+}
+
+###
+
+### Tentar registrar com valor inválido (deve retornar 400)
+POST {{CashFlow.Launches.Api_HostAddress}}/lancamentos
+Content-Type: application/json
+
+{
+  "tipo": "Credito",
+  "valor": 0,
+  "data": "2026-08-24",
+  "descricao": "Valor inválido"
+}
+
+###
+
+### Tentar registrar com data futura (deve retornar 400)
+POST {{CashFlow.Launches.Api_HostAddress}}/lancamentos
+Content-Type: application/json
+
+{
+  "tipo": "Credito",
+  "valor": 100,
+  "data": "2099-01-01",
+  "descricao": "Data futura"
+}
+
+###
+
+### Consultar saldo consolidado do dia
+# Execute os POSTs acima primeiro e aguarde alguns segundos (processamento assíncrono via fila)
+GET {{CashFlow.Consolidation.Worker_HostAddress}}/saldos/2026-08-24
+Accept: application/json
+
+###
+
+### Consultar saldo de um dia sem lançamentos (deve retornar zerado, não erro)
+GET {{CashFlow.Consolidation.Worker_HostAddress}}/saldos/2020-01-01
 Accept: application/json
 
 ###
