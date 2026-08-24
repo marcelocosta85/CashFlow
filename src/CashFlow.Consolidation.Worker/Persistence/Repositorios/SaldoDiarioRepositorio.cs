@@ -19,8 +19,16 @@ public class SaldoDiarioRepositorio : ISaldoDiarioRepositorio
         return _dbContext.SaldosDiarios.FirstOrDefaultAsync(s => s.Data == data.Date, cancellationToken);
     }
 
-    public async Task AplicarLancamentoAsync(TipoLancamento tipo, decimal valor, DateTime data, CancellationToken cancellationToken)
+    public async Task<bool> AplicarLancamentoAsync(Guid lancamentoId, TipoLancamento tipo, decimal valor, DateTime data, CancellationToken cancellationToken)
     {
+        await using var transacao = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var jaProcessado = await _dbContext.LancamentosProcessados
+            .AnyAsync(l => l.LancamentoId == lancamentoId, cancellationToken);
+
+        if (jaProcessado)
+            return false;
+
         var saldoDiario = await ObterPorDataAsync(data, cancellationToken);
 
         if (saldoDiario is null)
@@ -30,7 +38,11 @@ public class SaldoDiarioRepositorio : ISaldoDiarioRepositorio
         }
 
         saldoDiario.AplicarLancamento(tipo, valor);
+        _dbContext.LancamentosProcessados.Add(new LancamentoProcessado(lancamentoId));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await transacao.CommitAsync(cancellationToken);
+
+        return true;
     }
 }

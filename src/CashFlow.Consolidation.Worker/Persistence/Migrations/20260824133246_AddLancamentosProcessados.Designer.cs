@@ -3,6 +3,7 @@ using System;
 using CashFlow.Consolidation.Worker.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CashFlow.Consolidation.Worker.Persistence.Migrations
 {
     [DbContext(typeof(SaldoDiarioDbContext))]
-    partial class SaldoDiarioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824133246_AddLancamentosProcessados")]
+    partial class AddLancamentosProcessados
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
