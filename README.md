@@ -4,9 +4,6 @@ Desafio técnico: sistema para um lojista registrar lançamentos financeiros
 (créditos/débitos) e consultar o saldo diário consolidado, com os dois
 recursos desacoplados em serviços independentes.
 
-Especificação completa em [`specs/001-cash-flow-management/spec.md`](specs/001-cash-flow-management/spec.md),
-plano técnico e decisões de arquitetura em [`specs/001-cash-flow-management/plan.md`](specs/001-cash-flow-management/plan.md).
-
 ## Arquitetura
 
 Dois bounded contexts, cada um seu próprio processo, schema de banco e ciclo
@@ -18,10 +15,10 @@ flowchart LR
     Cliente(["Cliente / Swagger"])
 
     subgraph Launches["CashFlow.Launches.Api"]
-        LC[LancamentosController]
-        LH[RegistrarLancamentoHandler]
-        LR[(schema: lancamentos)]
-        LC --> LH --> LR
+        LC["LancamentosController"]
+        LH["RegistrarLancamentoHandler"]
+        LDB[("schema: lancamentos")]
+        LC --> LH --> LDB
     end
 
     subgraph MQ["RabbitMQ"]
@@ -29,22 +26,22 @@ flowchart LR
         Q[["queue lancamento-registrado"]]
         DLQ[["DLQ lancamento-registrado.dlq"]]
         EX --> Q
-        Q -. falha após retries .-> DLQ
+        Q -. falha apos retries .-> DLQ
     end
 
     subgraph Worker["CashFlow.Consolidation.Worker"]
-        RC[RabbitMqConsumer + Polly]
-        CH[ConsolidarLancamentoHandler]
-        SC[SaldoDiarioController]
-        WR[(schema: consolidation)]
-        RC --> CH --> WR
-        SC --> WR
+        RC["RabbitMqConsumer + Polly"]
+        CH["ConsolidarLancamentoHandler"]
+        SC["SaldoDiarioController"]
+        WDB[("schema: consolidation")]
+        RC --> CH --> WDB
+        SC --> WDB
     end
 
-    Cliente -->|POST /lancamentos| LC
-    LH -->|publica LancamentoRegistradoEvent| EX
+    Cliente -->|"POST /lancamentos"| LC
+    LH -->|"publica LancamentoRegistradoEvent"| EX
     Q -->|consome| RC
-    Cliente -->|GET /saldos/{data}| SC
+    Cliente -->|"GET /saldos/data"| SC
 ```
 
 - **`CashFlow.Launches.Api`** recebe e persiste lançamentos. Publica o
@@ -119,18 +116,11 @@ dead-letter queue nativa, ack manual — com bem menos complexidade operacional
 que Kafka, além de um painel de management pronto para inspeção visual da
 fila durante a avaliação.
 
-**PT-BR no domínio, inglês na infraestrutura.** As classes de domínio
-(`Lancamento`, `TipoLancamento`, `SaldoDiario`) usam a linguagem ubíqua do
-negócio, em português — é como o lojista e o time de negócio se referem a
-esses conceitos. Nomes de projeto, containers e infraestrutura seguem inglês,
-por serem vocabulário técnico, não de domínio. Convenção fechada em
-`CLAUDE.md`.
-
 **`Mediator` (martinothamar) em vez de `MediatR`.** A partir das versões
 recentes o MediatR passou a exigir licença comercial paga em produção — 
 incompatível com um projeto sem orçamento de licenciamento. Trocado por uma
 alternativa open-source (MIT) baseada em source generators, com API
-equivalente. Detalhes em `plan.md § Registro de mudanças`.
+equivalente.
 
 **Idempotência via chave primária, não lock/checagem otimista.** A proteção
 real contra reprocessar a mesma mensagem duas vezes (por exemplo, um retry do
@@ -145,10 +135,6 @@ Infrastructure.** Os dois controllers apenas traduzem HTTP para comandos/
 queries do Mediator. A orquestração de casos de uso (`RegistrarLancamentoHandler`,
 `ConsolidarLancamentoHandler`) vive em `CashFlow.Application`; os
 repositórios em Infrastructure só persistem o que o handler decidiu.
-
-Demais decisões — incluindo idas e vindas registradas durante o
-desenvolvimento — em `specs/001-cash-flow-management/plan.md § Registro de
-mudanças`.
 
 ## Fora de escopo (deliberado)
 
